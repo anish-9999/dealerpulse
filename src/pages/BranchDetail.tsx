@@ -56,6 +56,26 @@ export default function BranchDetail() {
   const roster = useMemo(() => getTeamRoster(branch.id), [branch.id]);
   const lostReasons = useMemo(() => getLostReasonBreakdown(filteredLeads, branch.id), [filteredLeads, branch.id]);
   const modelPerf = useMemo(() => getModelPerformance(branch.id, selectedMonth), [branch.id, selectedMonth]);
+  const [mpSortKey, setMpSortKey] = useState('conversionRate');
+  const [mpSortDir, setMpSortDir] = useState<'asc' | 'desc'>('desc');
+  const sortedModelPerf = useMemo(() => {
+    const list = [...modelPerf];
+    list.sort((a, b) => {
+      const aVal = a[mpSortKey as keyof typeof a];
+      const bVal = b[mpSortKey as keyof typeof b];
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return mpSortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      if (aVal < bVal) return mpSortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return mpSortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return list;
+  }, [modelPerf, mpSortKey, mpSortDir]);
+  function toggleMpSort(key: string) {
+    if (mpSortKey === key) setMpSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setMpSortKey(key); setMpSortDir('desc'); }
+  }
 
   const officerMetrics: Record<string, { conversionRate: number; wonLeads: number }> = {};
   for (const officer of roster.officers) {
@@ -339,16 +359,16 @@ export default function BranchDetail() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-xs text-gray-500 uppercase border-b border-gray-100">
-                    <th className="text-left font-medium pb-2 pr-3">Model</th>
-                    <th className="text-right font-medium pb-2 pr-3">Leads</th>
-                    <th className="text-right font-medium pb-2 pr-3">Won</th>
-                    <th className="text-right font-medium pb-2 pr-3">Conv. %</th>
-                    <th className="text-right font-medium pb-2">Revenue</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...modelPerf].sort((a, b) => b.conversionRate - a.conversionRate).map((m) => (
+                    <tr className="text-xs text-gray-500 uppercase border-b border-gray-100">
+                      <th className="text-left font-medium pb-2 pr-3 cursor-pointer select-none hover:text-gray-700" onClick={() => toggleMpSort('model')}>Model{mpSortKey === 'model' ? <span className="ml-1 text-brand-600">{mpSortDir === 'asc' ? '↑' : '↓'}</span> : <span className="ml-1 text-gray-300">⇅</span>}</th>
+                      <th className="text-right font-medium pb-2 pr-3 cursor-pointer select-none hover:text-gray-700" onClick={() => toggleMpSort('totalLeads')}>Leads{mpSortKey === 'totalLeads' ? <span className="ml-1 text-brand-600">{mpSortDir === 'asc' ? '↑' : '↓'}</span> : <span className="ml-1 text-gray-300">⇅</span>}</th>
+                      <th className="text-right font-medium pb-2 pr-3 cursor-pointer select-none hover:text-gray-700" onClick={() => toggleMpSort('won')}>Won{mpSortKey === 'won' ? <span className="ml-1 text-brand-600">{mpSortDir === 'asc' ? '↑' : '↓'}</span> : <span className="ml-1 text-gray-300">⇅</span>}</th>
+                      <th className="text-right font-medium pb-2 pr-3 cursor-pointer select-none hover:text-gray-700" onClick={() => toggleMpSort('conversionRate')}>Conv. %{mpSortKey === 'conversionRate' ? <span className="ml-1 text-brand-600">{mpSortDir === 'asc' ? '↑' : '↓'}</span> : <span className="ml-1 text-gray-300">⇅</span>}</th>
+                      <th className="text-right font-medium pb-2 cursor-pointer select-none hover:text-gray-700" onClick={() => toggleMpSort('totalRevenue')}>Revenue{mpSortKey === 'totalRevenue' ? <span className="ml-1 text-brand-600">{mpSortDir === 'asc' ? '↑' : '↓'}</span> : <span className="ml-1 text-gray-300">⇅</span>}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedModelPerf.map((m) => (
                     <tr key={m.model} className="border-b border-gray-50 last:border-0">
                       <td className="py-2 pr-3 font-medium text-gray-900">{m.model}</td>
                       <td className="py-2 pr-3 text-right text-gray-700">{m.totalLeads}</td>

@@ -15,11 +15,38 @@ interface Props {
 
 export default function DashboardPipelineQuality({ filteredLeads, selectedMonth }: Props) {
   const [modelBranch, setModelBranch] = useState('');
+  const [sortKey, setSortKey] = useState('conversionRate');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const branches = getBranches();
   const funnel = useMemo(() => getConversionFunnel(filteredLeads), [filteredLeads]);
   const sourcePerf = useMemo(() => getSourcePerformance(filteredLeads), [filteredLeads]);
   const lostReasons = useMemo(() => getLostReasonBreakdown(filteredLeads), [filteredLeads]);
   const modelPerf = useMemo(() => getModelPerformance(modelBranch || undefined, selectedMonth), [modelBranch, selectedMonth]);
+
+  function toggleSort(key: string) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('desc'); }
+  }
+
+  const sortedModelPerf = useMemo(() => {
+    const list = [...modelPerf];
+    list.sort((a, b) => {
+      const aVal = a[sortKey as keyof typeof a];
+      const bVal = b[sortKey as keyof typeof b];
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return list;
+  }, [modelPerf, sortKey, sortDir]);
+
+  function SortIcon({ column }: { column: string }) {
+    if (sortKey !== column) return <span className="ml-1 text-gray-300">⇅</span>;
+    return <span className="ml-1 text-brand-600">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+  }
 
   return (
     <div className="space-y-2">
@@ -183,15 +210,15 @@ export default function DashboardPipelineQuality({ filteredLeads, selectedMonth 
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-gray-500 uppercase border-b border-gray-100">
-                      <th className="text-left font-medium pb-2 pr-3">Model</th>
-                      <th className="text-right font-medium pb-2 pr-3">Leads</th>
-                      <th className="text-right font-medium pb-2 pr-3">Won</th>
-                      <th className="text-right font-medium pb-2 pr-3">Conv. %</th>
-                      <th className="text-right font-medium pb-2">Revenue</th>
+                      <th className="text-left font-medium pb-2 pr-3 cursor-pointer select-none hover:text-gray-700" onClick={() => toggleSort('model')}>Model<SortIcon column="model" /></th>
+                      <th className="text-right font-medium pb-2 pr-3 cursor-pointer select-none hover:text-gray-700" onClick={() => toggleSort('totalLeads')}>Leads<SortIcon column="totalLeads" /></th>
+                      <th className="text-right font-medium pb-2 pr-3 cursor-pointer select-none hover:text-gray-700" onClick={() => toggleSort('won')}>Won<SortIcon column="won" /></th>
+                      <th className="text-right font-medium pb-2 pr-3 cursor-pointer select-none hover:text-gray-700" onClick={() => toggleSort('conversionRate')}>Conv. %<SortIcon column="conversionRate" /></th>
+                      <th className="text-right font-medium pb-2 cursor-pointer select-none hover:text-gray-700" onClick={() => toggleSort('totalRevenue')}>Revenue<SortIcon column="totalRevenue" /></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {[...modelPerf].sort((a, b) => b.conversionRate - a.conversionRate).map((m) => (
+                    {sortedModelPerf.map((m) => (
                       <tr key={m.model} className="border-b border-gray-50 last:border-0">
                         <td className="py-2 pr-3 font-medium text-gray-900">{m.model}</td>
                         <td className="py-2 pr-3 text-right text-gray-700">{m.totalLeads}</td>
