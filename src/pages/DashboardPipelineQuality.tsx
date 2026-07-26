@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { XCircle, BarChart3 } from 'lucide-react';
 import {
   getConversionFunnel, getSourcePerformance,
-  getLostReasonBreakdown, getModelPerformance,
+  getLostReasonBreakdown, getModelPerformance, getBranches,
 } from '../lib/data';
 import type { LostReasonStats } from '../lib/types';
 import Section from '../components/shared/Section';
@@ -14,10 +14,12 @@ interface Props {
 }
 
 export default function DashboardPipelineQuality({ filteredLeads, selectedMonth }: Props) {
+  const [modelBranch, setModelBranch] = useState('');
+  const branches = getBranches();
   const funnel = useMemo(() => getConversionFunnel(filteredLeads), [filteredLeads]);
   const sourcePerf = useMemo(() => getSourcePerformance(filteredLeads), [filteredLeads]);
   const lostReasons = useMemo(() => getLostReasonBreakdown(filteredLeads), [filteredLeads]);
-  const modelPerf = useMemo(() => getModelPerformance(undefined, selectedMonth), [selectedMonth]);
+  const modelPerf = useMemo(() => getModelPerformance(modelBranch || undefined, selectedMonth), [modelBranch, selectedMonth]);
 
   return (
     <div className="space-y-2">
@@ -163,7 +165,19 @@ export default function DashboardPipelineQuality({ filteredLeads, selectedMonth 
           </div>
 
           <div className="dashboard-card p-4 md:p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Model Performance</h3>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <h3 className="text-sm font-semibold text-gray-900">Model Performance</h3>
+              <select
+                value={modelBranch}
+                onChange={e => setModelBranch(e.target.value)}
+                className="text-xs border border-gray-300 rounded-lg px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="">All Branches</option>
+                {branches.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            </div>
             {modelPerf.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -188,7 +202,7 @@ export default function DashboardPipelineQuality({ filteredLeads, selectedMonth 
                             m.conversionRate >= 25 ? 'text-amber-700 bg-amber-50' :
                             'text-red-700 bg-red-50'
                           }`}>
-                            {m.conversionRate.toFixed(1)}%
+                            {m.conversionRate.toFixed(1)}% ({m.totalLeads} lead{m.totalLeads !== 1 ? 's' : ''})
                           </span>
                         </td>
                         <td className="py-2 text-right font-semibold text-gray-700">₹{(m.totalRevenue / 10000000).toFixed(1)}Cr</td>

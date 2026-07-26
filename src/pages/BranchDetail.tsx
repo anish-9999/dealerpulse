@@ -6,7 +6,7 @@ import {
   getConversionFunnel, getTargetsForBranch,
   getMonthlyTrend, leadsInRange, isWon,
   computeBranchComparison, getTeamRoster,
-  getLostReasonBreakdown
+  getLostReasonBreakdown, getModelPerformance
 } from '../lib/data';
 import InsightCard from '../components/shared/InsightCard';
 import Breadcrumbs from '../components/layout/Breadcrumbs';
@@ -55,6 +55,7 @@ export default function BranchDetail() {
   const comparison = useMemo(() => computeBranchComparison(branch.id, selectedMonth), [branch.id, selectedMonth]);
   const roster = useMemo(() => getTeamRoster(branch.id), [branch.id]);
   const lostReasons = useMemo(() => getLostReasonBreakdown(filteredLeads, branch.id), [filteredLeads, branch.id]);
+  const modelPerf = useMemo(() => getModelPerformance(branch.id, selectedMonth), [branch.id, selectedMonth]);
 
   const officerMetrics: Record<string, { conversionRate: number; wonLeads: number }> = {};
   for (const officer of roster.officers) {
@@ -330,6 +331,46 @@ export default function BranchDetail() {
           )}
         </div>
       </Section>
+
+      {/* Model Performance */}
+      {modelPerf.length > 0 && (
+        <Section title="Model Performance" description="Conversion by vehicle model at this branch" zone="white">
+          <div className="dashboard-card-static p-4 md:p-5">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-gray-500 uppercase border-b border-gray-100">
+                    <th className="text-left font-medium pb-2 pr-3">Model</th>
+                    <th className="text-right font-medium pb-2 pr-3">Leads</th>
+                    <th className="text-right font-medium pb-2 pr-3">Won</th>
+                    <th className="text-right font-medium pb-2 pr-3">Conv. %</th>
+                    <th className="text-right font-medium pb-2">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...modelPerf].sort((a, b) => b.conversionRate - a.conversionRate).map((m) => (
+                    <tr key={m.model} className="border-b border-gray-50 last:border-0">
+                      <td className="py-2 pr-3 font-medium text-gray-900">{m.model}</td>
+                      <td className="py-2 pr-3 text-right text-gray-700">{m.totalLeads}</td>
+                      <td className="py-2 pr-3 text-right font-medium">{m.won}</td>
+                      <td className="py-2 pr-3 text-right">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                          m.conversionRate >= 50 ? 'text-green-700 bg-green-50' :
+                          m.conversionRate >= 25 ? 'text-amber-700 bg-amber-50' :
+                          'text-red-700 bg-red-50'
+                        }`}>
+                          {m.conversionRate.toFixed(1)}% ({m.totalLeads} lead{m.totalLeads !== 1 ? 's' : ''})
+                        </span>
+                      </td>
+                      <td className="py-2 text-right font-semibold text-gray-700">₹{(m.totalRevenue / 10000000).toFixed(1)}Cr</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Section>
+      )}
 
       {/* Stale leads */}
       {staleLeads.length > 0 && (
