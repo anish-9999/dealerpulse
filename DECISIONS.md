@@ -138,3 +138,13 @@ All conversion rates in the app are defined as: **percentage of leads created in
 - **Lead forecasting model** — weighted pipeline projection using historical stage-to-close ratios per branch
 - **Full drill-down for response speed** — the top-10 capped list is a simplification; a searchable full list with filters would be more useful for day-to-day management
 - **Multi-period comparison** — month-over-month conversion rate trends for sources and models
+
+### Rep detail presentation cleanup
+
+Three presentation changes on the `/rep/:id` page, all purely cosmetic — no data logic changes:
+
+1. **Standardized KPI comparison format.** Revenue was using percentile framing ("Top 92% in network") while the other three cards used delta framing ("+9.54pts", "+₹0.09L"). Switched Revenue to the same two-line delta format (Branch avg vs Network avg) so a reader scanning all four cards sees the same shape of information each time. This required adding `totalRevenue` to the `RepAverages` type to expose per-rep average revenue.
+
+2. **Split Deals Won card.** The packed "12 delivered · 2 pending · Branch avg 11.80 (+2.20) · Network avg ..." single subtitle was dense and hard to parse. Now renders the delivered/pending breakdown as the first subtitle line and the branch/network comparison as a second line, using `whitespace-pre-line` on the KPICard subtitle to render `\n` as a real line break.
+
+3. **Clarified Active stat.** "Active: 0" next to "2 orders pending" read as "nothing in motion" when 2 deals were still being fulfilled. Added a hover tooltip: "Active = leads not yet won or lost" so it's unambiguous that pending-delivery orders are tracked under Won, not Active.
