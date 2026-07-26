@@ -277,7 +277,7 @@ export function getDashboardInsights(month?: string): { type: 'alert' | 'tip' | 
   const staleLeads = getStaleLeads(allLeads, 7);
 
   if (staleLeads.length > 0) {
-    insights.push({ type: 'alert', text: `${staleLeads.length} lead${staleLeads.length > 1 ? 's' : ''} in pipeline haven't been contacted in 7+ days.`, tab: 'operations' });
+    insights.push({ type: 'alert', text: `${staleLeads.length} lead${staleLeads.length > 1 ? 's' : ''} in pipeline haven't been contacted in 7+ days. See Speed & Fulfillment tab for details.`, tab: 'operations' });
   }
 
   // Lead-volume gap: single insight summarizing network-wide shortfall
