@@ -113,6 +113,7 @@ export interface RepAverages {
   conversionRate: number;
   avgDealValue: number;
   unitsWon: number;
+  totalRevenue: number;
 }
 
 export interface RepComparison {

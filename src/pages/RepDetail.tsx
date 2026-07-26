@@ -66,8 +66,8 @@ export default function RepDetail() {
       {/* KPIs with deltas */}
       <Section title="Performance" description={`${rep.name}'s stats compared to branch and network averages`} zone="white">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <KPICard title="Revenue" value={`₹${(summary.totalRevenue / 100000).toFixed(2)}L`} icon={<IndianRupee className="w-4 h-4" />} color="green" subtitle={comparison ? `Top ${comparison.percentileInNetwork}% in network` : undefined} />
-          <KPICard title="Deals Won" value={summary.wonLeads} subtitle={`${deliveredCount} delivered · ${orderPlacedCount} orders${comparison ? `\nBranch avg ${comparison.branchAvg.unitsWon.toFixed(2)} (${summary.wonLeads >= comparison.branchAvg.unitsWon ? '+' : ''}${(summary.wonLeads - comparison.branchAvg.unitsWon).toFixed(2)}) · Network avg ${comparison.networkAvg.unitsWon.toFixed(2)} (${summary.wonLeads >= comparison.networkAvg.unitsWon ? '+' : ''}${(summary.wonLeads - comparison.networkAvg.unitsWon).toFixed(2)})` : ''}`} icon={<Car className="w-4 h-4" />} color="blue" tooltip="Won = Delivered + Order Placed (payment received, awaiting delivery)" />
+          <KPICard title="Revenue" value={`₹${(summary.totalRevenue / 100000).toFixed(2)}L`} icon={<IndianRupee className="w-4 h-4" />} color="green" subtitle={comparison ? `Branch avg ₹${(comparison.branchAvg.totalRevenue / 100000).toFixed(2)}L (${summary.totalRevenue >= comparison.branchAvg.totalRevenue ? '+' : ''}₹${(Math.abs(summary.totalRevenue - comparison.branchAvg.totalRevenue) / 100000).toFixed(2)}L) · Network avg ₹${(comparison.networkAvg.totalRevenue / 100000).toFixed(2)}L (${summary.totalRevenue >= comparison.networkAvg.totalRevenue ? '+' : ''}₹${(Math.abs(summary.totalRevenue - comparison.networkAvg.totalRevenue) / 100000).toFixed(2)}L)` : undefined} />
+          <KPICard title="Deals Won" value={summary.wonLeads} icon={<Car className="w-4 h-4" />} color="blue" tooltip="Won = Delivered + Order Placed (payment received, awaiting delivery)" subtitle={`${deliveredCount} delivered · ${orderPlacedCount} pending${comparison ? `\nBranch avg ${comparison.branchAvg.unitsWon.toFixed(2)} (${summary.wonLeads >= comparison.branchAvg.unitsWon ? '+' : ''}${(summary.wonLeads - comparison.branchAvg.unitsWon).toFixed(2)}) · Network avg ${comparison.networkAvg.unitsWon.toFixed(2)} (${summary.wonLeads >= comparison.networkAvg.unitsWon ? '+' : ''}${(summary.wonLeads - comparison.networkAvg.unitsWon).toFixed(2)})` : ''}`} />
           <KPICard title="Lead Conv." value={`${summary.conversionRate.toFixed(2)}%`} subtitle={comparison ? `Branch avg ${comparison.branchAvg.conversionRate.toFixed(2)}% (${summary.conversionRate >= comparison.branchAvg.conversionRate ? '+' : ''}${(summary.conversionRate - comparison.branchAvg.conversionRate).toFixed(2)}pts) · Network avg ${comparison.networkAvg.conversionRate.toFixed(2)}% (${summary.conversionRate >= comparison.networkAvg.conversionRate ? '+' : ''}${(summary.conversionRate - comparison.networkAvg.conversionRate).toFixed(2)}pts)` : undefined} icon={<Activity className="w-4 h-4" />} color="purple" />
           <KPICard title="Avg Deal Value" value={`₹${(summary.avgDealValue / 100000).toFixed(2)}L`} subtitle={comparison ? `Branch avg ₹${(comparison.branchAvg.avgDealValue / 100000).toFixed(2)}L (${summary.avgDealValue >= comparison.branchAvg.avgDealValue ? '+' : ''}₹${(Math.abs(summary.avgDealValue - comparison.branchAvg.avgDealValue) / 100000).toFixed(2)}L) · Network avg ₹${(comparison.networkAvg.avgDealValue / 100000).toFixed(2)}L (${summary.avgDealValue >= comparison.networkAvg.avgDealValue ? '+' : ''}₹${(Math.abs(summary.avgDealValue - comparison.networkAvg.avgDealValue) / 100000).toFixed(2)}L)` : undefined} icon={<TrendingUp className="w-4 h-4" />} color="amber" />
         </div>
@@ -83,9 +83,13 @@ export default function RepDetail() {
                 <p className="text-lg font-bold text-blue-700">{filteredLeads.length}</p>
                 <p className="text-xs text-blue-600">Total Leads</p>
               </div>
-              <div className="text-center p-3 rounded-lg bg-amber-50">
+              <div className="text-center p-3 rounded-lg bg-amber-50 relative group">
                 <p className="text-lg font-bold text-amber-700">{activeLeads.length}</p>
                 <p className="text-xs text-amber-600">Active</p>
+                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 text-xs font-normal text-white bg-gray-800 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg text-center">
+                  Active = leads not yet won or lost
+                  <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+                </span>
               </div>
               <div className="text-center p-3 rounded-lg bg-green-50">
                 <p className="text-lg font-bold text-green-700">{wonLeads.length}</p>

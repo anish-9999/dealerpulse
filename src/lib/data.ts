@@ -419,6 +419,7 @@ export function computeRepAverages(reps: SalesRep[], month?: string): RepAverage
     conversionRate: totalLeads > 0 ? (totalWon / totalLeads) * 100 : 0,
     avgDealValue: totalWon > 0 ? totalRevenue / totalWon : 0,
     unitsWon: count > 0 ? totalWon / count : 0,
+    totalRevenue: count > 0 ? totalRevenue / count : 0,
   };
 }
 
@@ -475,6 +476,7 @@ export function computeBranchComparison(branchId: string, month?: string): Branc
       conversionRate: totalLeads > 0 ? (totalWon / totalLeads) * 100 : 0,
       avgDealValue: totalWon > 0 ? totalRevenue / totalWon : 0,
       unitsWon: branchCount > 0 ? totalWon / branchCount : 0,
+      totalRevenue: branchCount > 0 ? totalRevenue / branchCount : 0,
     },
   };
 }

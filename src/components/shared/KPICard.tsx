@@ -44,7 +44,7 @@ export default function KPICard({ title, value, subtitle, icon, trend, color = '
             )}
           </div>
           <p className="text-xl md:text-2xl font-bold tracking-tight">{typeof value === 'number' ? value.toLocaleString() : value}</p>
-          {subtitle && <p className="text-xs opacity-70">{subtitle}</p>}
+          {subtitle && <p className="text-xs opacity-70 whitespace-pre-line">{subtitle}</p>}
         </div>
         {icon && (
           <div className={`p-2 rounded-lg shrink-0 ${iconColorMap[color]}`}>
