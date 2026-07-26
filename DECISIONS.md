@@ -110,7 +110,7 @@ The blue "progressed" segment was `cumulative - idle` only, silently counting lo
 Full spec applied: proportional bar widths, 3-segment inline bars (blue/amber/coral), green delivered stage (no amber for won deals), color legend, pill-shaped rounded-full bars, context-aware number rendering, CSS variables for funnel colors.
 
 ### Response Speed distribution instead of raw 48h+ list
-The old "X leads waited 48h+" was a single count with a few names. Replaced with three-bucket distribution (0-24h, 24-48h, 48h+) showing the responsiveness shape at a glance, plus a capped top-10 longest-waiting list with full context (model, source, status). This prevented ~186 individual entries from overwhelming the UI.
+The old "X leads waited 48h+" was a single count with a few names. Replaced with three-bucket distribution (0-24h, 24-48h, 48h+) showing the responsiveness shape at a glance, plus a capped top-10 slowest-first-contact list with full context (model, source, status, rep). This prevented ~186 individual entries from overwhelming the UI.
 
 ### Lead-volume-vs-target as the headline insight
 Every branch's lead volume falls short of its target — even at 100% conversion, targets are unreachable. This reframes the network's core problem from "sales isn't converting" to "lead generation is the bottleneck." Computed as the gap between `totalLeads` and `targetUnits` for each branch, aggregated into a single network-wide alert.
