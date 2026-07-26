@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { PhoneCall, Telescope } from 'lucide-react';
 import {
-  getTimeToFirstContact, getStaleLeads, getDeliveryTrend,
+  getTimeToFirstContact, getStaleLeads, getDeliveryTrend, getRepById,
 } from '../lib/data';
 import type { StaleLead } from '../lib/types';
 import Section from '../components/shared/Section';
@@ -134,16 +134,23 @@ export default function DashboardOperations({ filteredLeads, deliveryStats }: Pr
               <div className="space-y-3">
                 <p className="text-xs text-gray-500">{contactSpeed.slowLeads.length} leads waited 48h+ · showing top {topSlowLeads.length}</p>
                 <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {topSlowLeads.map(s => (
-                    <div key={s.lead.id} className="flex items-start justify-between gap-2 p-2.5 rounded-lg bg-gray-50">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{s.lead.customer_name}</p>
-                        <p className="text-xs text-gray-500 truncate">{s.lead.model_interested} · {s.lead.source.replace('_', ' ')}</p>
-                        <StatusBadge status={s.lead.status} />
+                  {topSlowLeads.map(s => {
+                    const rep = getRepById(s.lead.assigned_to);
+                    return (
+                      <div key={s.lead.id} className="flex items-start justify-between gap-2 p-2.5 rounded-lg bg-gray-50">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{s.lead.customer_name}</p>
+                          <p className="text-xs text-gray-500 truncate">{s.lead.model_interested} · {s.lead.source.replace('_', ' ')}</p>
+                          <p className="text-xs">
+                            {rep ? <button onClick={() => { window.location.hash = `/rep/${rep.id}`; window.scrollTo(0, 0); }} className="text-brand-600 hover:underline text-xs">{rep.name}</button> : '—'}
+                            {' · '}
+                            <StatusBadge status={s.lead.status} />
+                          </p>
+                        </div>
+                        <span className="text-xs font-medium text-red-600 whitespace-nowrap">{s.hoursWaited}h</span>
                       </div>
-                      <span className="text-xs font-medium text-red-600 whitespace-nowrap">{s.hoursWaited}h</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : <p className="text-xs text-gray-400">No leads waited 48h+</p>}
