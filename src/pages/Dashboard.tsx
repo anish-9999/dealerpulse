@@ -18,7 +18,11 @@ const TABS = [
 ];
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('health');
+  const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem('activeTab') || 'health');
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    sessionStorage.setItem('activeTab', tab);
+  };
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedMonth = searchParams.get('month') || '';
   const setSelectedMonth = (m: string) => {
@@ -58,7 +62,7 @@ export default function Dashboard() {
 
       <HeadlineInsight insights={insights} />
 
-      <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
+      <Tabs tabs={TABS} active={activeTab} onChange={handleTabChange} />
 
       {activeTab === 'health' && (
         <DashboardBusinessHealth
