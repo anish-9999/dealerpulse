@@ -1,5 +1,5 @@
-import { useParams, Link } from 'react-router-dom';
-import { useMemo, useState } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useMemo, useState, useEffect } from 'react';
 import {
   getBranchById, getLeadsByBranch, computeBranchSummary,
   getRepsByBranch, computeRepSummary, getStaleLeads,
@@ -8,21 +8,27 @@ import {
   computeBranchComparison, getTeamRoster,
   getLostReasonBreakdown
 } from '../lib/data';
-
 import InsightCard from '../components/shared/InsightCard';
 import Breadcrumbs from '../components/layout/Breadcrumbs';
 import KPICard from '../components/shared/KPICard';
 import StatusBadge from '../components/shared/StatusBadge';
 import MonthFilter from '../components/shared/MonthFilter';
+import Section from '../components/shared/Section';
 import { EmptyState, ProgressBar } from '../components/shared/Misc';
-import Leaderboard from '../components/shared/Leaderboard';
-import RosterCard from '../components/shared/RosterCard';
-import { IndianRupee, Car, Users, Target, Clock, Activity, XCircle } from 'lucide-react';
+import { IndianRupee, Car, Users, Target, Clock, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 
 export default function BranchDetail() {
   const { id } = useParams<{ id: string }>();
-  const [selectedMonth, setSelectedMonth] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlMonth = searchParams.get('month') || '';
+  const [selectedMonth, setSelectedMonth] = useState(urlMonth);
+  const handleMonthChange = (m: string) => {
+    setSelectedMonth(m);
+    if (m) setSearchParams({ month: m });
+    else setSearchParams({});
+  };
+  useEffect(() => { window.scrollTo(0, 0); }, []);
   const branch = getBranchById(id!);
 
   if (!branch) {
@@ -61,9 +67,9 @@ export default function BranchDetail() {
   })();
 
   return (
-    <div className="space-y-6">
-      <Breadcrumbs items={[
-        { label: 'Dashboard', href: '/' },
+    <div className="space-y-2">
+      <Breadcrumbs homeHref={`/${selectedMonth ? `?month=${selectedMonth}` : ''}`} items={[
+        { label: 'Dashboard', href: `/${selectedMonth ? `?month=${selectedMonth}` : ''}` },
         { label: branch.name },
       ]} />
 
@@ -72,22 +78,24 @@ export default function BranchDetail() {
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">{branch.name}</h1>
           <p className="text-sm text-gray-500">{branch.city} · {reps.length} reps · {allLeads.length} total leads</p>
         </div>
-        <MonthFilter selected={selectedMonth} onChange={setSelectedMonth} />
+        <MonthFilter selected={selectedMonth} onChange={handleMonthChange} />
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-        <KPICard title="Revenue" value={`₹${(summary.totalRevenue / 10000000).toFixed(2)}Cr`} icon={<IndianRupee className="w-4 h-4" />} color="green" />
-        <KPICard title="Units Won" value={summary.wonLeads} subtitle={`${branchDelivered} delivered · ${branchOrderPlaced} orders`} icon={<Car className="w-4 h-4" />} color="blue" tooltip="Won = Delivered + Order Placed (payment received, awaiting delivery)" />
-        <KPICard title="Active Leads" value={summary.activeLeads} icon={<Users className="w-4 h-4" />} color="amber" />
-        <KPICard title="Conversion" value={`${summary.conversionRate.toFixed(2)}%`} icon={<Activity className="w-4 h-4" />} color="purple" />
-        <KPICard title="Target Units" value={summary.targetUnits} subtitle={`${summary.unitsAchieved} achieved`} icon={<Target className="w-4 h-4" />} color="red" />
-        <KPICard title="Target Progress" value={`${Math.round(summary.unitsProgress)}%`} icon={<Clock className="w-4 h-4" />} color={summary.unitsProgress >= 70 ? 'green' : 'red'} />
-      </div>
+      <Section title="Key Metrics" description={`${branch.name} monthly performance`} zone="white">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+          <KPICard title="Revenue" value={`₹${(summary.totalRevenue / 10000000).toFixed(2)}Cr`} icon={<IndianRupee className="w-4 h-4" />} color="green" />
+          <KPICard title="Units Won" value={summary.wonLeads} subtitle={`${branchDelivered} delivered · ${branchOrderPlaced} orders`} icon={<Car className="w-4 h-4" />} color="blue" tooltip="Won = Delivered + Order Placed (payment received, awaiting delivery)" />
+          <KPICard title="Active Leads" value={summary.activeLeads} icon={<Users className="w-4 h-4" />} color="amber" />
+          <KPICard title="Lead Conv. Rate" value={`${summary.conversionRate.toFixed(2)}%`} subtitle={`${summary.totalLeads} leads`} icon={<Activity className="w-4 h-4" />} color="purple" tooltip="Percentage of leads created this month that have since closed as a win (not necessarily in the same month)." />
+          <KPICard title="Target Units" value={summary.targetUnits} subtitle={`${summary.unitsAchieved} achieved`} icon={<Target className="w-4 h-4" />} color="red" />
+          <KPICard title="Target Progress" value={`${Math.round(summary.unitsProgress)}%`} icon={<Clock className="w-4 h-4" />} color={summary.unitsProgress >= 70 ? 'green' : 'red'} />
+        </div>
+      </Section>
 
       {/* Progress bar */}
       {summary.targetUnits > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5">
+        <div className="dashboard-card p-4 md:p-5">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-gray-900">Unit Target Progress</h3>
             <span className="text-sm font-bold text-gray-900">{summary.unitsAchieved} / {summary.targetUnits}</span>
@@ -103,35 +111,39 @@ export default function BranchDetail() {
 
       {/* Branch vs Network Average */}
       {comparison && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-          <ComparisonCard
-            label="Conversion Rate"
-            branchValue={`${comparison.branch.conversionRate.toFixed(2)}%`}
-            networkValue={`${comparison.networkAvg.conversionRate.toFixed(2)}%`}
-            isAbove={comparison.branch.conversionRate > comparison.networkAvg.conversionRate}
-            diff={Math.abs(comparison.branch.conversionRate - comparison.networkAvg.conversionRate).toFixed(2)}
-            unit="pts"
-          />
-          <ComparisonCard
-            label="Avg Deal Value"
-            branchValue={`₹${(comparison.branch.totalRevenue / Math.max(comparison.branch.wonLeads, 1) / 100000).toFixed(2)}L`}
-            networkValue={`₹${(comparison.networkAvg.avgDealValue / 100000).toFixed(2)}L`}
-            isAbove={comparison.branch.wonLeads > 0 && (comparison.branch.totalRevenue / comparison.branch.wonLeads) > comparison.networkAvg.avgDealValue}
-            diff={`₹${Math.abs((comparison.branch.totalRevenue / Math.max(comparison.branch.wonLeads, 1) - comparison.networkAvg.avgDealValue) / 100000).toFixed(2)}L`}
-            unit=""
-          />
-          <ComparisonCard
-            label="Units Won"
-            branchValue={comparison.branch.wonLeads}
-            networkValue={comparison.networkAvg.unitsWon.toFixed(2)}
-            isAbove={comparison.branch.wonLeads > comparison.networkAvg.unitsWon}
-            diff={(Math.abs(comparison.branch.wonLeads - comparison.networkAvg.unitsWon)).toFixed(2)}
-            unit="units"
-          />
-        </div>
+        <Section title="vs Network Average" description={`How ${branch.name} compares to the network benchmark`} zone="white">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+            <ComparisonCard
+              label="Lead Conv. Rate"
+              branchValue={`${comparison.branch.conversionRate.toFixed(2)}%`}
+              subtitle={`${comparison.branch.totalLeads} leads`}
+              tooltip="Percentage of leads created this month that have since closed as a win (not necessarily in the same month)."
+              networkValue={`${comparison.networkAvg.conversionRate.toFixed(2)}%`}
+              isAbove={comparison.branch.conversionRate > comparison.networkAvg.conversionRate}
+              diff={Math.abs(comparison.branch.conversionRate - comparison.networkAvg.conversionRate).toFixed(2)}
+              unit="pts"
+            />
+            <ComparisonCard
+              label="Avg Deal Value"
+              branchValue={`₹${(comparison.branch.totalRevenue / Math.max(comparison.branch.wonLeads, 1) / 100000).toFixed(2)}L`}
+              networkValue={`₹${(comparison.networkAvg.avgDealValue / 100000).toFixed(2)}L`}
+              isAbove={comparison.branch.wonLeads > 0 && (comparison.branch.totalRevenue / comparison.branch.wonLeads) > comparison.networkAvg.avgDealValue}
+              diff={`₹${Math.abs((comparison.branch.totalRevenue / Math.max(comparison.branch.wonLeads, 1) - comparison.networkAvg.avgDealValue) / 100000).toFixed(2)}L`}
+              unit=""
+            />
+            <ComparisonCard
+              label="Units Won"
+              branchValue={comparison.branch.wonLeads}
+              networkValue={comparison.networkAvg.unitsWon.toFixed(2)}
+              isAbove={comparison.branch.wonLeads > comparison.networkAvg.unitsWon}
+              diff={(Math.abs(comparison.branch.wonLeads - comparison.networkAvg.unitsWon)).toFixed(2)}
+              unit="units"
+            />
+          </div>
+        </Section>
       )}
 
-      {/* Insights for this branch */}
+      {/* Insights */}
       {staleLeads.length > 0 && (
         <InsightCard type="alert" title={`${staleLeads.length} stale lead${staleLeads.length > 1 ? 's' : ''} need attention`} />
       )}
@@ -139,127 +151,189 @@ export default function BranchDetail() {
         <InsightCard type="alert" title={`Low conversion rate (${summary.conversionRate.toFixed(2)}%) — review lead quality`} />
       )}
 
-      {/* Monthly trend chart */}
-      {monthlyTrend.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Monthly Performance</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyTrend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="won" name="Won" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="leads" name="Leads" fill="#93c5fd" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* Team Roster */}
-      <RosterCard manager={roster.manager} officers={roster.officers} managerMetrics={managerMetrics} officerMetrics={officerMetrics} />
-
-      {/* Rep Leaderboard */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">Rep Performance</h3>
-        {repSummaries.length > 0 ? (
-          <Leaderboard
-            items={repSummaries
-              .sort((a, b) => b.wonLeads - a.wonLeads)
-              .map(r => ({
-                id: r.rep.id,
-                label: r.rep.name,
-                subtitle: r.rep.role === 'branch_manager' ? 'Manager' : 'Sales Officer',
-                value: r.wonLeads,
-                suffix: 'won',
-                href: `/rep/${r.rep.id}`,
-                secondaryValue: `₹${(r.totalRevenue / 100000).toFixed(0)}L · ${r.conversionRate.toFixed(0)}% conv`,
-              }))}
-          />
-        ) : <EmptyState title="No rep data" />}
-      </div>
-
-      {/* Lead status breakdown */}
+      {/* Monthly trend + Team Roster */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Lead Status Breakdown</h3>
-          <div className="space-y-3">
-            {['new', 'contacted', 'test_drive', 'negotiation', 'order_placed', 'delivered', 'lost'].map(status => {
-              const count = filteredLeads.filter(l => l.status === status).length;
-              const pct = filteredLeads.length > 0 ? (count / filteredLeads.length) * 100 : 0;
-              if (count === 0) return null;
-              return (
-                <div key={status} className="flex items-center gap-3">
-                  <StatusBadge status={status} />
-                  <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
-                    <div className="h-full rounded bg-brand-500" style={{ width: `${Math.max(pct, 3)}%` }} />
-                  </div>
-                  <span className="text-sm font-medium text-gray-700 w-12 text-right">{count}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Sales funnel for this branch */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Pipeline by Stage</h3>
-          {funnel.length > 0 ? (
-            <div className="space-y-2">
-              {funnel.map((stage) => (
-                <div key={stage.name} className="flex items-center gap-2">
-                  <span className="text-xs font-medium w-24 text-right text-gray-600">{stage.name.replace('_', ' ')}</span>
-                  <div className="flex-1 h-6 bg-gray-100 rounded relative overflow-hidden">
-                    <div
-                      className="h-full rounded bg-brand-500 flex items-center justify-end px-2"
-                      style={{ width: `${Math.max((stage.count / Math.max(funnel[0].count, 1)) * 100, 3)}%` }}
-                    >
-                      <span className="text-xs font-semibold text-white">{stage.count}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+        {monthlyTrend.length > 0 && (
+          <div className="dashboard-card p-4 md:p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Monthly Performance</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthlyTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="won" name="Won" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="leads" name="Leads" fill="#93c5fd" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-          ) : <EmptyState title="No pipeline data" />}
+          </div>
+        )}
+
+        <div className="dashboard-card p-4 md:p-5">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">Team</h3>
+
+          {/* Manager row */}
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-brand-50 border border-brand-100 mb-5">
+            <div className="w-9 h-9 rounded-full bg-brand-200 flex items-center justify-center shrink-0">
+              <span className="text-xs font-bold text-brand-700">M</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-gray-900">{roster.manager.name}</p>
+              <p className="text-xs text-gray-500">Manager · Joined {roster.manager.joined}</p>
+            </div>
+            <div className="text-right text-xs shrink-0">
+              <p className="font-semibold text-gray-900">{managerMetrics?.wonLeads ?? 0} won</p>
+              <p className="text-gray-500">{managerMetrics ? `₹${(managerMetrics.wonLeads > 0 ? computeRepSummary(roster.manager.id, selectedMonth).totalRevenue / 100000 : 0).toFixed(0)}L` : '—'} · {managerMetrics?.conversionRate.toFixed(1) ?? '—'}%</p>
+            </div>
+          </div>
+
+          {/* Officers table */}
+          <div className="text-xs text-gray-400 mb-3 uppercase tracking-wider font-medium">
+            Sales Officers ({roster.officers.length})
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 uppercase border-b border-gray-100">
+                  <th className="text-left font-medium pb-2 pr-2 w-8">#</th>
+                  <th className="text-left font-medium pb-2 pr-3">Name</th>
+                  <th className="text-right font-medium pb-2 pr-3">Won</th>
+                  <th className="text-right font-medium pb-2 pr-3">Revenue</th>
+                  <th className="text-right font-medium pb-2">Conv.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...roster.officers]
+                  .sort((a, b) => {
+                    const aWon = officerMetrics[a.id]?.wonLeads ?? 0;
+                    const bWon = officerMetrics[b.id]?.wonLeads ?? 0;
+                    return bWon - aWon;
+                  })
+                  .map((officer, i) => {
+                    const metrics = officerMetrics[officer.id];
+                    const repSummary = repSummaries.find(r => r.rep.id === officer.id);
+                    return (
+                      <tr key={officer.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => { window.location.hash = `/rep/${officer.id}${selectedMonth ? `?month=${selectedMonth}` : ''}`; window.scrollTo(0, 0); }}>
+                        <td className="py-2.5 pr-2 text-gray-400 text-xs w-8">{i + 1}</td>
+                        <td className="py-2.5 pr-3">
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">{officer.name}</p>
+                            <p className="text-xs text-gray-500">Joined {officer.joined}</p>
+                          </div>
+                        </td>
+                        <td className="py-2.5 pr-3 text-right font-medium">{metrics?.wonLeads ?? 0}</td>
+                        <td className="py-2.5 pr-3 text-right font-medium">₹{(repSummary?.totalRevenue ?? 0) > 0 ? `${((repSummary?.totalRevenue ?? 0) / 100000).toFixed(0)}L` : '—'}</td>
+                        <td className="py-2.5 text-right font-medium">{metrics?.conversionRate.toFixed(1) ?? '—'}%</td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      {/* Lost Reason Analysis */}
-      {lostReasons.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <XCircle className="w-4 h-4 text-red-500" />
-            <h3 className="text-sm font-semibold text-gray-900">Lost Reason Analysis</h3>
-          </div>
-          <div className="space-y-3">
-            {lostReasons.slice(0, 6).map(r => (
-              <div key={r.reason} className="flex items-center gap-3">
-                <div className="flex-1">
-                  <div className="flex justify-between text-sm mb-0.5">
-                    <span className="text-gray-900 truncate">{r.reason}</span>
-                    <span className="text-xs font-medium text-gray-500 shrink-0">{r.count} lost</span>
-                  </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-red-400" style={{ width: `${Math.max(r.percentOfLost, 2)}%` }} />
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-red-600 w-16 text-right">₹{(r.totalValueLost / 10000000).toFixed(2)}Cr</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Pipeline + Lost Reasons */}
+      <Section title="Pipeline" description="Stage progression and why deals are lost" zone="white">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="dashboard-card p-4 md:p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Pipeline by Stage</h3>
+            {funnel.length > 0 ? (() => {
+              const stages = [...funnel].reverse().map(stage => {
+                const flowedCount = stage.count - stage.stuckCount - stage.lostCount;
+                const isWon = stage.name === 'order_placed' || stage.name === 'delivered';
+                const isTerminal = stage.name === 'delivered';
+                const idleCount = stage.stuckCount;
+                const lostCount = isWon ? 0 : stage.lostCount;
+                const total = isTerminal ? stage.count : flowedCount + idleCount + lostCount;
+                return { ...stage, flowedCount, idleCount, lostCount, total, isTerminal, isWon };
+              });
+              const maxCount = Math.max(...stages.map(s => s.total));
 
-      {/* Stale leads for this branch */}
-      {staleLeads.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-900">Leads Needing Follow-up</h3>
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">{staleLeads.length}</span>
+              return (
+                <>
+                  <div className="flex gap-4 text-xs text-gray-500 mb-4">
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--funnel-progressed)' }} /> Progressed</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--funnel-idle)' }} /> Idle</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--funnel-lost)' }} /> Lost</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--funnel-delivered)' }} /> Delivered</span>
+                  </div>
+                  <div className="space-y-3">
+                    {stages.map(s => {
+                      const barWidth = `${(s.total / maxCount) * 100}%`;
+                      const showNum = (val: number, total: number) => (val / total) * 100 > 8;
+                      return (
+                        <div key={s.name} className="flex items-center gap-3">
+                          <span className="text-xs font-medium w-24 text-right text-gray-600 shrink-0">{s.name.replace('_', ' ')}</span>
+                          <div className="flex-1 min-w-0 flex items-center gap-1">
+                            <div className="h-7 bg-gray-100 rounded-full overflow-hidden flex shrink-0" style={{ width: barWidth }}>
+                              {s.isTerminal ? (
+                                <div className="h-full w-full flex items-center justify-center" style={{ backgroundColor: 'var(--funnel-delivered)' }}>
+                                  <span className="text-xs font-semibold text-white">{s.count}</span>
+                                </div>
+                              ) : (
+                                <>
+                                  {s.flowedCount > 0 && (
+                                    <div className="h-full flex items-center justify-center transition-all shrink-0" style={{ width: `${(s.flowedCount / s.total) * 100}%`, backgroundColor: 'var(--funnel-progressed)' }}>
+                                      {showNum(s.flowedCount, s.total) && <span className="text-xs font-semibold text-white">{s.flowedCount}</span>}
+                                    </div>
+                                  )}
+                                  {s.idleCount > 0 && (
+                                    <div className="h-full flex items-center justify-center transition-all shrink-0" style={{ width: `${(s.idleCount / s.total) * 100}%`, backgroundColor: 'var(--funnel-idle)' }}>
+                                      {showNum(s.idleCount, s.total) && <span className="text-xs font-semibold text-amber-900">{s.idleCount}</span>}
+                                    </div>
+                                  )}
+                                  {s.lostCount > 0 && (
+                                    <div className="h-full flex items-center justify-center transition-all shrink-0" style={{ width: `${(s.lostCount / s.total) * 100}%`, backgroundColor: 'var(--funnel-lost)' }}>
+                                      {showNum(s.lostCount, s.total) && <span className="text-xs font-semibold text-white">{s.lostCount}</span>}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            {!s.isTerminal && s.flowedCount > 0 && !showNum(s.flowedCount, s.total) && <span className="text-xs text-gray-500 shrink-0">{s.flowedCount}</span>}
+                            {!s.isTerminal && s.idleCount > 0 && !showNum(s.idleCount, s.total) && <span className="text-xs text-amber-700 shrink-0">{s.idleCount}</span>}
+                            {!s.isTerminal && s.lostCount > 0 && !showNum(s.lostCount, s.total) && <span className="text-xs text-red-500 shrink-0">{s.lostCount}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })() : <EmptyState title="No pipeline data" />}
           </div>
+
+          {lostReasons.length > 0 && (
+            <div className="dashboard-card p-4 md:p-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">Lost Reason Analysis</h3>
+              <div className="space-y-3">
+                {lostReasons.slice(0, 6).map(r => (
+                  <div key={r.reason} className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="flex justify-between text-sm mb-0.5">
+                        <span className="text-gray-900 truncate">{r.reason}</span>
+                        <span className="text-xs font-medium text-gray-500 shrink-0">{r.count} lost</span>
+                      </div>
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full bg-red-400 transition-all" style={{ width: `${Math.max(r.percentOfLost, 2)}%` }} />
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-red-600 w-16 text-right">₹{(r.totalValueLost / 10000000).toFixed(2)}Cr</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </Section>
+
+      {/* Stale leads */}
+      {staleLeads.length > 0 && (
+        <Section title="Leads Needing Follow-up" description="Inactive for 7+ days" zone="white">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -272,7 +346,7 @@ export default function BranchDetail() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {staleLeads.map(s => (
-                  <tr key={s.lead.id} className="hover:bg-gray-50">
+                  <tr key={s.lead.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-3 py-2.5 font-medium text-gray-900">{s.lead.customer_name}</td>
                     <td className="px-3 py-2.5 text-gray-600">{s.rep.name}</td>
                     <td className="px-3 py-2.5"><StatusBadge status={s.lead.status} /></td>
@@ -282,27 +356,40 @@ export default function BranchDetail() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Section>
       )}
     </div>
   );
 }
 
-function ComparisonCard({ label, branchValue, networkValue, isAbove, diff, unit }: {
+function ComparisonCard({ label, branchValue, subtitle, tooltip, networkValue, isAbove, diff, unit }: {
   label: string;
   branchValue: string | number;
+  subtitle?: string;
+  tooltip?: string;
   networkValue: string;
   isAbove: boolean;
   diff: string;
   unit: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">{label}</p>
+    <div className="dashboard-card p-4">
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+        {label}
+        {tooltip && (
+          <span className="ml-1 inline-flex items-center cursor-help group relative">
+            <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">{tooltip}</span>
+          </span>
+        )}
+      </p>
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">This branch</span>
-          <span className="text-lg font-bold text-gray-900">{branchValue}</span>
+          <div className="text-right">
+            <span className="text-lg font-bold text-gray-900">{branchValue}</span>
+            {subtitle && <span className="text-xs text-gray-400 ml-1.5">{subtitle}</span>}
+          </div>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">Network avg</span>

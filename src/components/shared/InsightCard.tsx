@@ -1,9 +1,10 @@
-import { AlertTriangle, Info, Lightbulb } from 'lucide-react';
+import { AlertTriangle, Info, Lightbulb, ExternalLink } from 'lucide-react';
 
 interface InsightCardProps {
   type?: 'alert' | 'info' | 'tip';
   title: string;
   description?: string;
+  href?: string;
   children?: React.ReactNode;
 }
 
@@ -25,20 +26,27 @@ const styles = {
   },
 };
 
-export default function InsightCard({ type = 'info', title, description, children }: InsightCardProps) {
+export default function InsightCard({ type = 'info', title, description, href, children }: InsightCardProps) {
   const style = styles[type];
   const Icon = style.Icon;
 
-  return (
-    <div className={`rounded-lg border p-3.5 ${style.bg}`}>
+  const content = (
+    <div className={`rounded-lg border p-3.5 ${style.bg} ${href ? 'cursor-pointer hover:shadow-sm transition-shadow' : ''}`}>
       <div className="flex items-start gap-2.5">
         <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${style.icon}`} />
-        <div className="space-y-1 min-w-0">
+        <div className="space-y-1 min-w-0 flex-1">
           <p className="text-sm font-medium text-gray-900">{title}</p>
           {description && <p className="text-xs text-gray-600">{description}</p>}
           {children}
         </div>
+        {href && <ExternalLink className="w-3.5 h-3.5 text-gray-400 mt-1 shrink-0" />}
       </div>
     </div>
   );
+
+  if (href) {
+    return <a href={href} className="block">{content}</a>;
+  }
+
+  return content;
 }

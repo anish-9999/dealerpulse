@@ -3,7 +3,7 @@ import type {
   DealershipData, Branch, SalesRep, Lead, MonthlyTarget, DeliveryRecord,
   BranchSummary, RepSummary, FunnelStage, StaleLead, LeadStatus,
   TeamRoster, RepAverages, RepComparison, BranchComparison,
-  SourceStats, LostReasonStats, ContactSpeedStats
+  SourceStats, LostReasonStats, ContactSpeedStats, ModelPerformanceStats
 } from './types';
 
 const data = rawData as unknown as DealershipData;
@@ -153,6 +153,7 @@ export function getConversionFunnel(leads: Lead[]): FunnelStage[] {
   const funnel: FunnelStage[] = stages.map(name => ({
     name,
     count: 0,
+    stuckCount: 0,
     lostCount: 0,
     lostReasons: {},
   }));
@@ -179,11 +180,10 @@ export function getConversionFunnel(leads: Lead[]): FunnelStage[] {
     }
   }
 
-  const nonLostCount = leads.length - leads.filter(l => l.status === 'lost').length;
-  let cumulative = nonLostCount;
+  let cumulative = leads.length;
   return funnel.map(s => {
-    const stage = { ...s, count: cumulative };
-    cumulative -= s.count;
+    const stage = { ...s, stuckCount: s.count, count: cumulative };
+    cumulative -= s.count + s.lostCount;
     return stage;
   });
 }
@@ -227,8 +227,9 @@ export function getMonthlyTrend(leads: Lead[], targets: MonthlyTarget[]) {
   });
 }
 
-export function getDeliveryStats() {
-  const deliveries = getDeliveries();
+export function getDeliveryStats(month?: string) {
+  let deliveries = getDeliveries();
+  if (month) deliveries = deliveries.filter(d => d.delivery_date.startsWith(month));
   const withDelay = deliveries.filter(d => d.delay_reason);
   const reasons: Record<string, number> = {};
   for (const d of withDelay) {
@@ -269,44 +270,110 @@ export function getModelBreakdown(leads: Lead[]): Record<string, number> {
   return models;
 }
 
-export function getDashboardInsights(month?: string): { type: 'alert' | 'tip' | 'info'; text: string }[] {
-  const insights: { type: 'alert' | 'tip' | 'info'; text: string }[] = [];
-  const branches = getBranches();
+export function getDashboardInsights(month?: string): { type: 'alert' | 'tip' | 'info'; text: string; tab?: string }[] {
+  const insights: { type: 'alert' | 'tip' | 'info'; text: string; tab?: string }[] = [];
   const allLeads = leadsInRange(getLeads(), month);
+  const branches = getBranches();
   const staleLeads = getStaleLeads(allLeads, 7);
 
   if (staleLeads.length > 0) {
-    insights.push({ type: 'alert', text: `${staleLeads.length} lead${staleLeads.length > 1 ? 's' : ''} in pipeline haven't been contacted in 7+ days. Check the Stale Leads panel.` });
+    insights.push({ type: 'alert', text: `${staleLeads.length} lead${staleLeads.length > 1 ? 's' : ''} in pipeline haven't been contacted in 7+ days.`, tab: 'pipeline' });
   }
 
-  for (const branch of branches) {
-    const summary = computeBranchSummary(branch.id, month);
-    if (summary.unitsProgress < 70 && summary.targetUnits > 0) {
-      insights.push({ type: 'alert', text: `${branch.name} is ${Math.round(100 - summary.unitsProgress)}% behind unit target (${summary.unitsAchieved}/${summary.targetUnits}).` });
-    }
-    if (summary.conversionRate < 20 && summary.totalLeads > 5) {
-      insights.push({ type: 'alert', text: `${branch.name} has a low conversion rate of ${Math.round(summary.conversionRate)}%. Review lead quality or rep performance.` });
+  // Lead-volume gap: single insight summarizing network-wide shortfall
+  const gapBranches = branches
+    .map(b => computeBranchSummary(b.id, month))
+    .filter(s => s.targetUnits > 0 && s.totalLeads < s.targetUnits);
+  if (gapBranches.length > 0) {
+    const totalGap = gapBranches.reduce((s, b) => s + (b.targetUnits - b.totalLeads), 0);
+    insights.push({
+      type: 'alert',
+      text: gapBranches.length === 1
+        ? `${gapBranches[0].branch.name}'s leads (${gapBranches[0].totalLeads}) fall short of its target (${gapBranches[0].targetUnits}) by ${totalGap}. Lead volume is the bottleneck.`
+        : `${gapBranches.length === branches.length ? `All ${branches.length} branches` : gapBranches.map(b => b.branch.name).join(', ')} have lead volumes below their targets (total shortfall: ${totalGap} leads). Lead generation, not conversion, is the network bottleneck.`,
+      tab: 'health',
+    });
+  }
+
+  // Source-quality mismatch: flag high-volume sources with below-avg conversion
+  const sourcePerf = getSourcePerformance(allLeads);
+  const networkConv = allLeads.length > 0
+    ? (allLeads.filter(l => isWon(l.status)).length / allLeads.length) * 100
+    : 0;
+  for (const src of sourcePerf) {
+    if (src.totalLeads >= 30 && src.conversionRate < networkConv * 0.6) {
+      insights.push({
+        type: 'info',
+        text: `${src.source.replace('_', ' ')} brings ${src.totalLeads} leads but converts at ${src.conversionRate.toFixed(1)}% vs the ${networkConv.toFixed(1)}% network average. Reconsider this channel's spend.`,
+        tab: 'pipeline',
+      });
     }
   }
 
-  const repWon = getReps().map(r => ({ rep: r, won: getLeadsByRep(r.id).filter(l => isWon(l.status)).length }));
-  const topRep = repWon.sort((a, b) => b.won - a.won)[0];
-  if (topRep) insights.push({ type: 'tip', text: `Top performer: ${topRep.rep.name} with ${topRep.won} deals closed.` });
-  const bottomRep = repWon.filter(r => r.rep.role === 'sales_officer').sort((a, b) => a.won - b.won)[0];
-  if (bottomRep && bottomRep.rep.role === 'sales_officer') {
-    insights.push({ type: 'tip', text: `${bottomRep.rep.name} has only ${bottomRep.won} deals. May need coaching or lead reassignment.` });
+  // Top & bottom performer (tenure-aware)
+  const periodEnd = month ? new Date(month + '-01').getTime() + 32 * 24 * 60 * 60 * 1000 : new Date('2025-12-31T23:59:59Z').getTime();
+  const repWon = getReps()
+    .filter(r => r.role === 'sales_officer')
+    .map(r => ({
+      rep: r,
+      won: getLeadsByRep(r.id).filter(l => isWon(l.status)).length,
+      joinedMs: new Date(r.joined).getTime(),
+    }))
+    .filter(r => (periodEnd - r.joinedMs) / (1000 * 60 * 60 * 24 * 30) >= 2);
+
+  const topRep = [...repWon].sort((a, b) => b.won - a.won)[0];
+  if (topRep) insights.push({ type: 'tip', text: `Top performer: ${topRep.rep.name} with ${topRep.won} deals closed.`, tab: 'health' });
+
+  const bottomRep = [...repWon].sort((a, b) => a.won - b.won)[0];
+  if (bottomRep && bottomRep.won < 3) {
+    insights.push({ type: 'tip', text: `${bottomRep.rep.name} has only ${bottomRep.won} deals${bottomRep.rep.joined ? ' (joined ' + bottomRep.rep.joined + ')' : ''}. May need coaching.`, tab: 'health' });
   }
 
   const contactStats = getTimeToFirstContact(allLeads);
   const slowestBranch = contactStats.byBranch[0];
   if (slowestBranch && slowestBranch.avgHours > 24) {
-    insights.push({ type: 'alert', text: `${slowestBranch.branchName} takes ${slowestBranch.avgHours}h avg to first contact — slowest in network.` });
+    insights.push({ type: 'alert', text: `${slowestBranch.branchName} takes ${slowestBranch.avgHours}h avg to first contact — slowest in network.`, tab: 'pipeline' });
   }
 
   const lostBreakdown = getLostReasonBreakdown(allLeads);
   const topLossReason = lostBreakdown[0];
   if (topLossReason && topLossReason.percentOfLost > 20) {
-    insights.push({ type: 'info', text: `"${topLossReason.reason}" is the #1 lost reason (${Math.round(topLossReason.percentOfLost)}% of losses, ₹${(topLossReason.totalValueLost / 10000000).toFixed(1)}Cr lost).` });
+    insights.push({ type: 'info', text: `"${topLossReason.reason}" is the #1 lost reason (${Math.round(topLossReason.percentOfLost)}% of losses, ₹${(topLossReason.totalValueLost / 10000000).toFixed(1)}Cr lost).`, tab: 'operations' });
+  }
+
+  // Single highest-value at-risk lead
+  const now = new Date('2025-12-31T23:59:59Z');
+  const agingActive = allLeads
+    .filter(l => isActive(l.status))
+    .map(l => {
+      const lastActivity = new Date(l.last_activity_at);
+      const daysSinceActivity = Math.floor((now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+      return { lead: l, daysSinceActivity };
+    })
+    .filter(l => l.daysSinceActivity >= 7)
+    .sort((a, b) => b.lead.deal_value - a.lead.deal_value);
+  const topAtRisk = agingActive[0];
+  if (topAtRisk) {
+    insights.push({
+      type: 'alert',
+      text: `₹${(topAtRisk.lead.deal_value / 100000).toFixed(1)}L deal with ${topAtRisk.lead.customer_name} (${topAtRisk.lead.model_interested}) has been idle in "${topAtRisk.lead.status.replace('_', ' ')}" for ${topAtRisk.daysSinceActivity}d.`,
+      tab: 'pipeline',
+    });
+  }
+
+  // Delivery-time trend degradation: compare H1 vs H2 averages
+  const deliveryTrendData = getDeliveryTrend();
+  if (deliveryTrendData.length >= 4) {
+    const midIdx = Math.floor(deliveryTrendData.length / 2);
+    const h1Avg = deliveryTrendData.slice(0, midIdx).reduce((s, d) => s + d.avgDays, 0) / midIdx;
+    const h2Avg = deliveryTrendData.slice(midIdx).reduce((s, d) => s + d.avgDays, 0) / (deliveryTrendData.length - midIdx);
+    if (h2Avg > h1Avg * 1.5) {
+      insights.push({
+        type: 'alert',
+        text: `Delivery times have nearly doubled from ~${Math.round(h1Avg)}d early in the period to ~${Math.round(h2Avg)}d recently. Investigate fulfillment bottlenecks.`,
+        tab: 'operations',
+      });
+    }
   }
 
   return insights;
@@ -445,6 +512,28 @@ export function getLostReasonBreakdown(leads: Lead[], scope?: string): LostReaso
       totalValueLost: withReason.reduce((s, l) => s + l.deal_value, 0),
     };
   }).sort((a, b) => b.count - a.count);
+}
+
+export function getModelPerformance(scope?: string, month?: string): ModelPerformanceStats[] {
+  let leads = month ? leadsInRange(getLeads(), month) : getLeads();
+  if (scope) leads = leads.filter(l => l.branch_id === scope);
+
+  const models = [...new Set(leads.map(l => l.model_interested))];
+  return models.map(model => {
+    const modelLeads = leads.filter(l => l.model_interested === model);
+    const won = modelLeads.filter(l => isWon(l.status));
+    return {
+      model,
+      totalLeads: modelLeads.length,
+      won: won.length,
+      conversionRate: modelLeads.length > 0 ? (won.length / modelLeads.length) * 100 : 0,
+      totalRevenue: won.reduce((s, l) => s + l.deal_value, 0),
+    };
+  }).sort((a, b) => b.totalLeads - a.totalLeads);
+}
+
+export function getAllRepsWithStats(month?: string): RepSummary[] {
+  return getReps().map(r => computeRepSummary(r.id, month));
 }
 
 export function getTimeToFirstContact(allLeads: Lead[]): ContactSpeedStats {

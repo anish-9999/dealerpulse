@@ -1,9 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Building2, LayoutDashboard } from 'lucide-react';
+import { Building2, LayoutDashboard, Users } from 'lucide-react';
 import { getBranches } from '../../lib/data';
 
 const navLinks = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/reps', label: 'Sales Reps', icon: Users },
 ];
 
 export default function Sidebar() {

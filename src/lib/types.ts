@@ -91,6 +91,7 @@ export interface RepSummary {
 export interface FunnelStage {
   name: string;
   count: number;
+  stuckCount: number;
   lostCount: number;
   lostReasons: Record<string, number>;
 }
@@ -140,6 +141,14 @@ export interface LostReasonStats {
   count: number;
   percentOfLost: number;
   totalValueLost: number;
+}
+
+export interface ModelPerformanceStats {
+  model: string;
+  totalLeads: number;
+  won: number;
+  conversionRate: number;
+  totalRevenue: number;
 }
 
 export interface ContactSpeedStats {

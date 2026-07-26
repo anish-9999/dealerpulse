@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, Lightbulb, Info } from 'lucide-react';
 
 interface HeadlineInsightProps {
-  insights: { type: 'alert' | 'tip' | 'info'; text: string }[];
+  insights: { type: 'alert' | 'tip' | 'info'; text: string; tab?: string }[];
 }
 
 const typeConfig = {
@@ -69,17 +69,9 @@ export default function HeadlineInsight({ insights }: HeadlineInsightProps) {
           <p className="text-sm font-medium text-gray-900">{current.text}</p>
         </div>
         {top3.length > 1 && (
-          <div className="flex gap-1.5 items-center shrink-0">
-            {top3.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setIndex(i)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  i === index ? `${config.dot} w-4` : 'bg-gray-300 hover:bg-gray-400'
-                }`}
-              />
-            ))}
-          </div>
+          <span className="text-xs text-gray-400 shrink-0 mt-0.5">
+            {index + 1} / {top3.length}
+          </span>
         )}
       </div>
     </div>
