@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   getBranches, getLeads, getTargets, getMonthlyTrend,
-  computeBranchSummary, leadsInRange, monthLabel,
+  computeBranchSummary,
 } from '../lib/data';
 import type { BranchSummary } from '../lib/types';
 import Section from '../components/shared/Section';
@@ -10,7 +9,7 @@ import InsightCard from '../components/shared/InsightCard';
 import { ProgressBar } from '../components/shared/Misc';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Legend, LineChart, Line,
+  CartesianGrid, Legend, Line,
 } from 'recharts';
 
 const BRANCH_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899'];

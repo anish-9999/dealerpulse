@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { getAllRepsWithStats, getBranches } from '../lib/data';
-import type { RepSummary } from '../lib/types';
 import Section from '../components/shared/Section';
 
 export default function RepsDirectory() {
