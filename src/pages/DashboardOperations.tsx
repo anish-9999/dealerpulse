@@ -128,7 +128,7 @@ export default function DashboardOperations({ filteredLeads, deliveryStats }: Pr
           <div className="dashboard-card p-4 md:p-5">
             <div className="flex items-center gap-2 mb-4">
               <PhoneCall className="w-4 h-4 text-gray-500" />
-              <h3 className="text-sm font-semibold text-gray-900">Worst Offenders (48h+)</h3>
+              <h3 className="text-sm font-semibold text-gray-900">Longest Waiting (48h+)</h3>
             </div>
             {topSlowLeads.length > 0 ? (
               <div className="space-y-3">
