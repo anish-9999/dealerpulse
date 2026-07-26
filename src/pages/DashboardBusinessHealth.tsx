@@ -136,6 +136,7 @@ export default function DashboardBusinessHealth({ selectedMonth, totalLeads, tot
                 key={i}
                 type={insight.type}
                 title={insight.text}
+                href={insight.tab ? `#/?tab=${insight.tab}` : undefined}
               />
             ))}
           </div>

@@ -18,12 +18,13 @@ const TABS = [
 ];
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem('activeTab') || 'health');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(() => urlTab || sessionStorage.getItem('activeTab') || 'health');
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     sessionStorage.setItem('activeTab', tab);
   };
-  const [searchParams, setSearchParams] = useSearchParams();
   const selectedMonth = searchParams.get('month') || '';
   const setSelectedMonth = (m: string) => {
     if (m) setSearchParams({ month: m });
