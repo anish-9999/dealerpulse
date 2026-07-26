@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Lightbulb, Info } from 'lucide-react';
+import { AlertTriangle, Lightbulb, Info, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface HeadlineInsightProps {
   insights: { type: 'alert' | 'tip' | 'info'; text: string; tab?: string }[];
@@ -69,9 +69,21 @@ export default function HeadlineInsight({ insights }: HeadlineInsightProps) {
           <p className="text-sm font-medium text-gray-900">{current.text}</p>
         </div>
         {top3.length > 1 && (
-          <span className="text-xs text-gray-400 shrink-0 mt-0.5">
-            {index + 1} / {top3.length}
-          </span>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => setIndex(prev => (prev - 1 + top3.length) % top3.length)}
+              className="p-1 rounded hover:bg-black/5 transition-colors text-gray-400 hover:text-gray-600"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs text-gray-400 tabular-nums">{index + 1}/{top3.length}</span>
+            <button
+              onClick={() => setIndex(prev => (prev + 1) % top3.length)}
+              className="p-1 rounded hover:bg-black/5 transition-colors text-gray-400 hover:text-gray-600"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         )}
       </div>
     </div>
