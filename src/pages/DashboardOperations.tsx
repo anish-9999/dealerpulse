@@ -174,7 +174,7 @@ export default function DashboardOperations({ filteredLeads, deliveryStats }: Pr
                 <div key={s.lead.id} className="flex items-start justify-between gap-2 p-2.5 rounded-lg bg-gray-50">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{s.lead.customer_name}</p>
-                    <p className="text-xs text-gray-500 truncate">{s.branch.name} · {s.rep.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{s.branch.name} · <button onClick={() => { window.location.hash = `/rep/${s.rep.id}`; window.scrollTo(0, 0); }} className="text-brand-600 hover:underline">{s.rep.name}</button></p>
                     <StatusBadge status={s.lead.status} />
                   </div>
                   <span className="text-xs font-medium text-red-600 whitespace-nowrap">{s.daysSinceLastActivity}d</span>
